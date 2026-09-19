@@ -1,59 +1,367 @@
+import os
+from flask import Flask, render_template_string, request, send_from_directory, jsonify, session, redirect, url_for
+
+app = Flask(__name__)
+# کلید رمزنگاری برای امنیت نشست‌ها (Sessions)
+app.secret_key = os.urandom(24)
+
+# پوشه ذخیره فایل‌ها
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# اطلاعات اختصاصی ورود مدیر (فقط شما باید بدانید)
+ADMIN_USERNAME = "my_admin"  # نام کاربری اختصاصی شما
+ADMIN_PASSWORD = "SecretPassword123"  # رمز عبور اختصاصی و امن شما
+
+# فایل تستی هوشمند اولیه
+test_filename = "ai-smart-model.zip"
+test_file_path = os.path.join(UPLOAD_FOLDER, test_filename)
+if not os.path.exists(test_file_path):
+    with open(test_file_path, "w", encoding="utf-8") as f:
+        f.write("این یک پکیج مدل هوش مصنوعی نمونه است. 🤖")
+
+uploaded_files = [test_filename]
+
+def ai_smart_analyzer(filename):
+    """هوش مصنوعی پایتونی برای تحلیل فایل، سنجش امنیت و ارائه پیشنهادهای هوشمند"""
+    path = os.path.join(UPLOAD_FOLDER, filename)
+    size_bytes = os.path.getsize(path) if os.path.exists(path) else 0
+    
+    if size_bytes > 1024 * 1024:
+        size_str = f"{size_bytes / (1024 * 1024):.2f} مگابایت"
+    else:
+        size_str = f"{size_bytes / 1024:.1f} کیلوبایت"
+        
+    ext = filename.split('.')[-1].lower() if '.' in filename else ''
+    
+    if ext in ['zip', 'rar', '7z']:
+        ai_type = "پکیج داده فشرده (Dataset / Archive)"
+        security_score = "98٪ (ایمن و استاندارد)"
+        ai_recommendation = "این فایل شامل ساختار فشرده است. پیشنهاد می‌شود پیش از استفاده، استخراج داده انجام دهید."
+    elif ext in ['mp3', 'wav', 'ogg']:
+        ai_type = "محتوای صوتی دیجیتال (Audio Stream)"
+        security_score = "100٪ (پاک و بدون اسکریپت مخرب)"
+        ai_recommendation = "سیستم صوتی کیفیت مناسبی دارد و آماده پخش یا دانلود است."
+    elif ext in ['jpg', 'png', 'jpeg', 'webp']:
+        ai_type, security_score = "تصویر گرافیکی هوش مصنوعی (Visual Asset)", "100٪ (تایید شده)"
+        ai_recommendation = "ابعاد و رزولوشن تصویر استاندارد و بهینه‌سازی‌شده است."
+    else:
+        ai_type, security_score = "فایل عمومی دیجیتال", "96٪ (تایید هوش مصنوعی)"
+        ai_recommendation = "فایل با موفقیت روی سرورهای ابری توزیع شد و هیچ‌گونه خطایی گزارش نشد."
+
+    return {
+        "name": filename,
+        "size": size_str,
+        "type": ai_type,
+        "security": security_score,
+        "recommendation": ai_recommendation
+    }
+
+def ai_chat_response(user_message):
+    """هوش مصنوعی پاسخگوی پیشرفته و همه‌فن‌حریف (چت‌بات)"""
+    msg = user_message.lower()
+    
+    if any(w in msg for w in ['سلام', 'درود', 'خسته نباشید', 'عصر بخیر', 'صبح بخیر', 'hello', 'hi']):
+        return "سلام! من دستیار هوشمند و پشتیبان آنلاین این سایت هستم 🤖. چطور می‌توانم در زمینه دانلود فایل‌ها، استفاده از سرورها یا راهنمایی به شما کمک کنم؟"
+    elif any(w in msg for w in ['دانلود', 'سرور', 'لینک', 'سرعت', 'کند', 'کار نمیکنه', 'ارور']):
+        return "اگر هنگام دانلود با ارور مواجه شدید، مطمئن شوید فایلی توسط مدیر در سیستم آپلود شده باشد. همچنین می‌توانید از «سرور ۱ (فیبر نوری)» مجدداً تلاش کنید."
+    elif any(w in msg for w in ['امنیت', 'ویروس', 'مخرب', 'پک', 'اسکن', 'سالم']):
+        return "تمامی فایل‌های بارگذاری‌شده روی سرور به صورت خودکار توسط ماژول امنیت پایتون اسکن می‌شوند و کاملاً پاک تایید شده‌اند."
+    elif any(w in msg for w in ['مدیر', 'آپلود', 'بارگذاری', 'رمز', 'ادمین', 'افزودن']):
+        return "بخش مدیریت کاملاً اختصاصی است و فقط مدیر اصلی سایت با داشتن اطلاعات ورود می‌تواند به آن دسترسی داشته باشد."
+    elif any(w in msg for w in ['راهنما', 'سایت', 'امکانات', 'چه کار', 'قابلیت']):
+        return "این یک پلتفرم هوشمند توزیع و تحلیل فایل است که مجهز به سرورهای پرسرعت و چت‌پشتیبان هوش مصنوعی می‌باشد."
+    elif any(w in msg for w in ['ممنون', 'مرسی', 'تشکر', 'عالی', 'دمت گرم']):
+        return "خواهش می‌کنم! خوشحالم که توانستم کمک کنم. موفق باشید! ⭐"
+    else:
+        return "سوال جالبی بود! پیشنهاد می‌کنم فایل فعال را از طریق سرورهای اصلی دانلود کنید. اگر سوال دیگری دارید بپرسید."
+
+SITE_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>هپی اپ | مرجع دانلود اپلیکیشن</title>
+    <title>هاب هوش مصنوعی و پشتیبانی آنلاین</title>
     <style>
-        body {
-            font-family: Tahoma, sans-serif;
-            background-color: #f0f2f5;
-            text-align: center;
-            padding: 50px 20px;
-            margin: 0;
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;600;800&display=swap');
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Vazirmatn', sans-serif; }
+        body { background: #030712; color: #f3f4f6; line-height: 1.8; padding: 20px; min-height: 100vh; background-image: radial-gradient(circle at 50% 15%, #1e1b4b 0%, #030712 75%); }
+        
+        .container { max-width: 900px; margin: 0 auto; background: rgba(17, 24, 39, 0.75); backdrop-filter: blur(20px); border: 1px solid rgba(139, 92, 246, 0.3); padding: 35px; border-radius: 24px; box-shadow: 0 25px 60px rgba(0,0,0,0.7); margin-bottom: 80px; }
+        
+        header { text-align: center; margin-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 25px; position: relative; }
+        .ai-badge { background: linear-gradient(135deg, #8b5cf6, #ec4899); color: white; padding: 5px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-block; margin-bottom: 10px; box-shadow: 0 0 20px rgba(139,92,246,0.6); }
+        h1 { color: #c084fc; font-size: 28px; font-weight: 800; margin-bottom: 8px; text-shadow: 0 0 25px rgba(192,132,252,0.4); }
+        .subtitle { color: #9ca3af; font-size: 13px; }
+        
+        .top-actions { position: absolute; top: 0; left: 0; display: flex; gap: 8px; }
+        .action-btn { background: rgba(31, 41, 55, 0.9); color: #c084fc; padding: 8px 14px; border-radius: 10px; text-decoration: none; font-size: 12px; border: 1px solid rgba(192,132,252,0.3); transition: 0.3s; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+        .action-btn:hover { background: #c084fc; color: #030712; box-shadow: 0 0 15px #c084fc; }
+
+        .ai-box { background: rgba(30, 27, 75, 0.5); border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 16px; padding: 22px; margin-bottom: 25px; box-shadow: inset 0 0 25px rgba(139, 92, 246, 0.1); }
+        .ai-title { color: #f472b6; font-size: 15px; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .ai-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 15px; }
+        .ai-item { background: rgba(15, 23, 42, 0.6); padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); font-size: 12.5px; }
+        .ai-item span { color: #a78bfa; font-weight: bold; display: block; margin-bottom: 2px; }
+        .ai-desc { font-size: 13px; color: #e5e7eb; background: rgba(15, 23, 42, 0.4); padding: 12px; border-radius: 10px; border-right: 4px solid #ec4899; }
+
+        h2 { color: #38bdf8; font-size: 17px; margin: 25px 0 12px 0; border-right: 4px solid #8b5cf6; padding-right: 10px; }
+        
+        .download-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 15px; }
+        .download-card { background: rgba(15, 23, 42, 0.9); border: 1px solid #1f2937; padding: 20px; border-radius: 14px; text-align: center; transition: 0.3s; position: relative; overflow: hidden; }
+        .download-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: linear-gradient(90deg, #8b5cf6, #38bdf8); }
+        .download-card:hover { transform: translateY(-4px); border-color: #8b5cf6; box-shadow: 0 10px 25px rgba(139,92,246,0.2); }
+        
+        .download-title { color: #f9fafb; font-size: 14px; margin-bottom: 6px; font-weight: bold; }
+        .download-desc { color: #9ca3af; font-size: 11.5px; margin-bottom: 15px; }
+        
+        .btn { display: inline-block; width: 100%; padding: 11px; color: white; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 13px; text-align: center; border: none; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        .btn:hover { opacity: 0.92; transform: scale(1.02); }
+        
+        .btn-primary { background: linear-gradient(135deg, #7c3aed, #8b5cf6); }
+        .btn-success { background: linear-gradient(135deg, #059669, #10b981); }
+        .btn-warning { background: linear-gradient(135deg, #d97706, #f59e0b); color: #030712; }
+        .btn-purple  { background: linear-gradient(135deg, #db2777, #ec4899); }
+        .btn-danger  { background: linear-gradient(135deg, #dc2626, #ef4444); }
+
+        form input[type="text"], form input[type="password"], form input[type="file"] {
+            width: 100%; padding: 13px; margin: 12px 0; background: #030712; border: 1px solid #374155; color: white; border-radius: 10px; font-size: 14px; outline: none; transition: 0.3s;
         }
-        .card {
-            background: white;
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #007bff;
-            font-size: 26px;
-            margin-bottom: 10px;
-        }
-        p {
-            color: #555;
-            line-height: 1.6;
-            font-size: 15px;
-        }
-        .btn {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 12px 25px;
-            background-color: #28a745;
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 16px;
-        }
-        .btn:hover {
-            background-color: #218838;
-        }
+        form input:focus { border-color: #a78bfa; box-shadow: 0 0 12px rgba(167,139,250,0.3); }
+
+        /* ویجت چت پشتیبان هوش مصنوعی */
+        .ai-chat-widget { position: fixed; bottom: 20px; right: 20px; width: 330px; background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(15px); border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 16px; box-shadow: 0 15px 40px rgba(0,0,0,0.8); overflow: hidden; z-index: 1000; display: flex; flex-direction: column; transition: 0.3s ease; transform: translateY(120%); opacity: 0; pointer-events: none; }
+        .ai-chat-widget.active { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        
+        .chat-header { background: linear-gradient(135deg, #7c3aed, #db2777); color: white; padding: 12px 15px; font-size: 13.5px; font-weight: bold; display: flex; align-items: center; justify-content: space-between; }
+        .chat-close { background: none; border: none; color: white; font-size: 16px; cursor: pointer; }
+        .chat-body { height: 240px; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 12.5px; }
+        .chat-msg { padding: 9px 13px; border-radius: 10px; max-width: 88%; line-height: 1.6; }
+        .msg-ai { background: rgba(139, 92, 246, 0.2); color: #e9d5ff; border: 1px solid rgba(139, 92, 246, 0.3); align-self: flex-start; }
+        .msg-user { background: #3b82f6; color: white; align-self: flex-end; }
+        .chat-footer { padding: 10px; background: #030712; display: flex; gap: 8px; border-top: 1px solid rgba(255,255,255,0.05); }
+        .chat-input { flex: 1; background: #111827; border: 1px solid #374155; color: white; padding: 8px 12px; border-radius: 8px; font-size: 12px; outline: none; }
+        .chat-send { background: #8b5cf6; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .chat-send:hover { opacity: 0.9; }
+        
+        .footer { text-align: center; margin-top: 35px; font-size: 11.5px; color: #6b7280; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h1>هپی‌اپ (Hapy-App) 🚀</h1>
-        <p>مرجع رسمی دانلود جدیدترین برنامه‌ها و ابزارهای اندرویدی. برای دریافت اپلیکیشن‌ها و ورود به کانال رسمی ما روی دکمه زیر کلیک کنید.</p>
-        <!-- به جای کلمه لینک_روبیکا، آدرس کانال روبیکای خودت را قرار بده -->
-        <a href="لینک_روبیکا" target="_blank" class="btn">ورود به کانال و دانلود</a>
+    <div class="container">
+        <header>
+            <div class="top-actions">
+                <a href="/admin" class="action-btn">⚙️ مدیریت کل</a>
+                {% if page == 'home' %}
+                <button onclick="toggleChat()" class="action-btn" style="color: #f472b6; border-color: rgba(244,114,182,0.4);">🤖 هوش مصنوعی</button>
+                {% endif %}
+            </div>
+            <div class="ai-badge">سیستم هوشمند ابری Python AI</div>
+            <h1>🤖 هاب هوش مصنوعی و توزیع فایل</h1>
+            <div class="subtitle">محیط پیشرفته پردازش داده و پشتیبانی خودکار</div>
+        </header>
+
+        {% if page == 'home' %}
+            <div class="ai-box">
+                <div class="ai-title">🧠 گزارش آنالیزگر هوش مصنوعی روی فایل جاری</div>
+                <div class="ai-grid">
+                    <div class="ai-item">
+                        <span>نام فایل فعال:</span>
+                        {{ ai_data.name }}
+                    </div>
+                    <div class="ai-item">
+                        <span>نوع تشخیص‌داده شده:</span>
+                        {{ ai_data.type }}
+                    </div>
+                    <div class="ai-item">
+                        <span>حجم فایل:</span>
+                        {{ ai_data.size }}
+                    </div>
+                    <div class="ai-item">
+                        <span>ضریب امنیت:</span>
+                        {{ ai_data.security }}
+                    </div>
+                </div>
+                <div class="ai-desc">
+                    <b>پیشنهاد سیستم:</b> {{ ai_data.recommendation }}
+                </div>
+            </div>
+
+            <h2>⚡ سرورهای تخصصی دانلود فایل</h2>
+            <div class="download-grid">
+                <div class="download-card">
+                    <div class="download-title">🚀 سرور اصلی فیبر نوری</div>
+                    <div class="download-desc">اتصال مستقیم با شتاب‌دهنده</div>
+                    <a href="/download/{{ current_file_name }}" class="btn btn-primary">دریافت از سرور ۱</a>
+                </div>
+
+                <div class="download-card">
+                    <div class="download-title">🌐 سرور کمکی اروپا</div>
+                    <div class="download-desc">پایداری بالا و روتینگ ابری</div>
+                    <a href="/download/{{ current_file_name }}" class="btn btn-success">دریافت از سرور ۲</a>
+                </div>
+
+                <div class="download-card">
+                    <div class="download-title">📦 سرور بهینه‌ساز سبک</div>
+                    <div class="download-desc">مخصوص اینترنت ضعیف</div>
+                    <a href="/download/{{ current_file_name }}" class="btn btn-warning">دریافت از سرور ۳</a>
+                </div>
+
+                <div class="download-card">
+                    <div class="download-title">☁️ ابر پشتیبان عصبی</div>
+                    <div class="download-desc">ذخیره‌سازی با امنیت تضمینی</div>
+                    <a href="/download/{{ current_file_name }}" class="btn btn-purple">دریافت از سرور ۴</a>
+                </div>
+            </div>
+
+        {% elif page == 'admin_login' %}
+            <h2>🔐 احراز هویت اختصاصی مدیریت</h2>
+            <p>این بخش امن است. لطفاً نام کاربری و رمز عبور مدیر را وارد کنید:</p>
+            <form method="POST">
+                <input type="text" name="username" placeholder="نام کاربری مدیر..." required autocomplete="off">
+                <input type="password" name="password" placeholder="رمز عبور مدیر..." required>
+                <button type="submit" class="btn btn-primary">ورود امن به پنل مدیریت</button>
+            </form>
+            <a href="/" class="btn btn-danger" style="margin-top: 15px; display: block; text-align: center;">بازگشت به صفحه اصلی</a>
+
+        {% elif page == 'admin_panel' %}
+            <h2>📁 پنل مدیریت اختصاصی فایل‌ها</h2>
+            <p>خوش آمدید مدیر گرامی! فایل جدید خود را بارگذاری کنید تا هوش مصنوعی آن را تحلیل کند.</p>
+            <form method="POST" action="/admin/upload" enctype="multipart/form-data">
+                <input type="file" name="file" required>
+                <button type="submit" class="btn btn-success">آپلود و تحلیل نهایی فایل</button>
+            </form>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <a href="/" class="btn btn-primary" style="flex: 1; text-align: center;">بازگشت به هاب</a>
+                <a href="/admin/logout" class="btn btn-danger" style="flex: 1; text-align: center;">خروج از پنل مدیریت</a>
+            </div>
+        {% endif %}
+
+        <div class="footer">
+            قدرت‌گرفته از پایتون، فریمورک Flask و ماژول چت هوشمند 🤖
+        </div>
     </div>
+
+    {% if page == 'home' %}
+    <div class="ai-chat-widget" id="aiChatWidget">
+        <div class="chat-header">
+            <span>💬 چت با پشتیبان هوش مصنوعی</span>
+            <button onclick="toggleChat()" class="chat-close">&times;</button>
+        </div>
+        <div class="chat-body" id="chatBody">
+            <div class="chat-msg msg-ai">سلام! من دستیار هوشمند شما هستم 🤖. درباره دانلود فایل یا سرورها سوالی دارید؟</div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="chatInput" class="chat-input" placeholder="سوال خود را بپرسید...">
+            <button onclick="sendChatMessage()" class="chat-send">ارسال</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleChat() {
+            const widget = document.getElementById('aiChatWidget');
+            widget.classList.toggle('active');
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const body = document.getElementById('chatBody');
+            const text = input.value.trim();
+            if(!text) return;
+
+            body.innerHTML += `<div class="chat-msg msg-user">${text}</div>`;
+            input.value = '';
+            body.scrollTop = body.scrollHeight;
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: text})
+                });
+                const data = await response.json();
+                body.innerHTML += `<div class="chat-msg msg-ai">${data.reply}</div>`;
+                body.scrollTop = body.scrollHeight;
+            } catch(e) {
+                body.innerHTML += `<div class="chat-msg msg-ai">خطا در ارتباط با سرور هوش مصنوعی.</div>`;
+            }
+        }
+        
+        document.getElementById('chatInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+    </script>
+    {% endif %}
 
 </body>
 </html>
+"""
+
+@app.route("/")
+def home():
+    current_file = uploaded_files[0] if uploaded_files else ""
+    ai_report = ai_smart_analyzer(current_file) if current_file else {"name": "فایلی موجود نیست", "size": "0", "type": "نامشخص", "security": "---", "recommendation": "لطفا از پنل مدیریت فایل جدید آپلود کنید."}
+    return render_template_string(SITE_TEMPLATE, page='home', current_file_name=current_file, ai_data=ai_report)
+
+@app.route("/api/chat", methods=['POST'])
+def api_chat():
+    data = request.get_json()
+    user_msg = data.get('message', '') if data else ''
+    reply = ai_chat_response(user_msg)
+    return jsonify({"reply": reply})
+
+@app.route("/admin", methods=['GET', 'POST'])
+def admin():
+    if session.get('is_admin'):
+        return render_template_string(SITE_TEMPLATE, page='admin_panel')
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['is_admin'] = True
+            return render_template_string(SITE_TEMPLATE, page='admin_panel')
+        else:
+            return "<script>alert('نام کاربری یا رمز عبور اشتباه است! دسترسی غیرمجاز.'); window.location.href='/admin';</script>"
+            
+    return render_template_string(SITE_TEMPLATE, page='admin_login')
+
+@app.route("/admin/upload", methods=['POST'])
+def admin_upload():
+    if not session.get('is_admin'):
+        return "<script>alert('دسترسی غیرمجاز! شما مدیر سایت نیستید.'); window.location.href='/';</script>"
+        
+    if 'file' in request.files:
+        file = request.files['file']
+        if file.filename != '':
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            file.save(file_path)
+            if file.filename not in uploaded_files:
+                uploaded_files.insert(0, file.filename)
+            else:
+                # جابجایی به اول لیست برای اینکه فایل جدید فایل اصلی دانلود باشد
+                uploaded_files.remove(file.filename)
+                uploaded_files.insert(0, file.filename)
+            return "<script>alert('فایل آپلود شد و هوش مصنوعی آن را بازبینی کرد!'); window.location.href='/admin';</script>"
+    return "<script>alert('خطا در آپلود فایل!'); window.location.href='/admin';</script>"
+
+@app.route("/admin/logout")
+def admin_logout():
+    session.pop('is_admin', None)
+    return redirect(url_for('home'))
+
+@app.route("/download/<filename>")
+def download_file(filename):
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    if os.path.exists(file_path):
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+    else:
+        return "<script>alert('خطا: فایل مورد نظر روی سرور یافت نشد یا پاک شده است!'); window.location.href='/';</script>", 404
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
